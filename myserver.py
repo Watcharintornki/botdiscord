@@ -1,15 +1,13 @@
 from flask import Flask
-from threading import Thread
+import os
+import main  # 👈 import เพื่อให้บอททำงาน
 
-app = Flask('')
+app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Server is running!"
+    return "✅ Server is running and bot is alive!"
 
-def run():
-    app.run(host='0.0.0.0',port=8080)
-
-def server_on():
-    t = Thread(target=run)
-    t.start()
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
