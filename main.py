@@ -1,10 +1,15 @@
+# main.py
 import os
 import discord
 from discord.ext import commands, tasks
 import datetime
+import asyncio
+from myserver import app  # เผื่อ Flask ถูก import ที่อื่น
 
+# Intents สำหรับ Discord Bot
 intents = discord.Intents.default()
 intents.message_content = True
+
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 DEFAULT_MINUTES = 15
@@ -70,12 +75,11 @@ async def x(ctx, *, name: str):
             try:
                 await item['message'].edit(content=f'❌ `{name}` คูลดาวน์ถูกยกเลิกแล้ว')
             except discord.NotFound:
-                print(f"ข้อความสำหรับ `{name}` ไม่พบ")
-            finally:
-                cooldowns[channel_id].remove(item)
-                found = True
-                await ctx.send(f'🛑 ยกเลิกคูลดาวน์ `{name}` เรียบร้อยแล้ว')
-                break
+                print(f"ข้อความ `{name}` ไม่พบแล้ว")
+            cooldowns[channel_id].remove(item)
+            await ctx.send(f'🛑 ยกเลิกคูลดาวน์ `{name}` เรียบร้อยแล้ว')
+            found = True
+            break
 
     if not found:
         await ctx.send(f"⚠️ ไม่พบชื่อ `{name}` ในคิวคูลดาวน์")
@@ -109,34 +113,31 @@ async def countdown_updater():
         channel = bot.get_channel(channel_id)
         if not channel:
             continue
-
         for item in items[:]:
             name = item['name']
             end_time = item['end_time']
             msg = item['message']
-
             remaining = end_time - now
+
             if remaining.total_seconds() <= 0:
                 try:
                     await channel.send(f'✅ `{name}` คูลดาวน์เสร็จแล้ว!')
                 except Exception as e:
-                    print(f"แจ้งเตือนคูลดาวน์ `{name}` ล้มเหลว: {e}")
+                    print(f"ส่งข้อความแจ้งเตือนไม่ได้: {e}")
                 items.remove(item)
             else:
                 mins_left = int(remaining.total_seconds() // 60)
                 try:
                     await msg.edit(content=f'⏳ `{name}` เหลือเวลาอีก {mins_left} นาที (สิ้นสุด {end_time.strftime("%H:%M:%S")})')
                 except discord.NotFound:
-                    print(f"ข้อความ `{name}` ไม่พบแล้ว")
                     items.remove(item)
                 except Exception as e:
-                    print(f"อัปเดต `{name}` ผิดพลาด: {e}")
+                    print(f"เกิดข้อผิดพลาดในการแก้ไขข้อความสำหรับ `{name}`: {e}")
 
         if not items:
             del cooldowns[channel_id]
 
-# 👇 ทำให้บอททำงานแม้ถูก import จาก myserver.py
-if __name__ == '__main__':
-    bot.run(os.getenv('TOKEN'))
-else:
-    bot.loop.create_task(bot.start(os.getenv('TOKEN')))
+# Entry point
+if __name__ == "__main__":
+    print("🚀 Starting Discord bot with Flask keep-alive...")
+    asyncio.run(bot.start(os.getenv('TOKEN')))
